@@ -24,7 +24,7 @@ class PhoneController extends AbstractController
     /**
      * @Route("/phones/{id<\d+>}", name="show_phone", methods={"GET"})
      */
-    public function show(Phone $phone, SerializerInterface $serializer)
+    public function showPhone(Phone $phone, SerializerInterface $serializer)
     {
         $data = $serializer->serialize($phone, 'json', ['groups' => ['show', 'list']]);
         return new Response($data, Response::HTTP_OK,
@@ -65,10 +65,11 @@ class PhoneController extends AbstractController
      * @param ValidatorInterface $validator
      * @return JsonResponse
      */
-    public function new(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, ValidatorInterface $validator)
+    public function newPhone(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager, ValidatorInterface $validator)
     {
         $phone =  $serializer->deserialize($request->getContent(), Phone::class, 'json');
         $errors = $validator->validate($phone);
+
         if (count($errors)) {
             $errors = $serializer->serialize($errors, 'json');
             return new Response($errors, Response::HTTP_INTERNAL_SERVER_ERROR, ['Content-Type' => 'application/json']);
@@ -83,5 +84,60 @@ class PhoneController extends AbstractController
     }
 
 
+    /**
+     * @Route("/phones/{id<\d+>}", name="update_phone", methods={"PUT"})
+     *
+     * @param Request $request
+     * @param Phone $phone
+     * @param EntityManagerInterface $entityManager
+     * @param ValidatorInterface $validator
+     * @param SerializerInterface $serializer
+     * @return JsonResponse|Response
+     */
+    public function updatePhone(Request $request, Phone $phone, EntityManagerInterface $entityManager, ValidatorInterface $validator, SerializerInterface $serializer)
+    {
+        $requestData = json_decode($request->getContent());
+        foreach ($requestData as $key => $value) {
+            if ($key && !empty($value)) {
+                $attribute = ucfirst($key);
+                $setter = 'set'.$attribute;
+
+                $phone->$setter($value);
+            }
+        }
+        $errors = $validator->validate($phone);
+
+        if (count($errors)) {
+            $errors = $serializer->serialize($errors, 'json');
+            return new Response($errors, Response::HTTP_INTERNAL_SERVER_ERROR, ['Content-Type' => 'application/json']);
+        }
+
+        $entityManager->flush();
+        $data = [
+            'status' => Response::HTTP_NO_CONTENT,
+            'message' => 'The phone object has been successfully updated!'
+        ];
+        return new JsonResponse($data);
+
+    }
+
+
+    /**
+     * @Route("/phones/{id<\d+>}", name="delete_phone", methods={"DELETE"})
+     *
+     * @param Phone $phone
+     * @param EntityManagerInterface $entityManager
+     * @return JsonResponse
+     */
+    public function deletePhone(Phone $phone, EntityManagerInterface $entityManager)
+    {
+        $entityManager->remove($phone);
+        $entityManager->flush();
+        $data = [
+            'status' => Response::HTTP_NO_CONTENT,
+            'message' => 'The phone object has been successfully removed!'
+        ];
+        return new JsonResponse($data);
+    }
 
 }
